@@ -22,6 +22,15 @@ import {
   AlertDialogTrigger,
 } from "@/app/components/ui/alert-dialog";
 import { toast } from "sonner";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/app/components/ui/drawer";
 
 export default function Home() {
   const [uploading, setUploading] = useState(null);
@@ -29,8 +38,12 @@ export default function Home() {
   const [comparing, setComparing] = useState(null);
   const [results, setResults] = useState(null);
   const [showResult, setShowResult] = useState(false);
-  const [uploadPolicyData, setUploadPolicyData] = useState(null)
+  const [uploadPolicyData, setUploadPolicyData] = useState(null);
   const [selectedPolicy, setSelectedPolicy] = useState(null);
+  const [selectedAIChatPolicy, setselectedAIChatPolicy] = useState(null);
+  const [prompt, setPrompt] = useState("")
+  const [thinking, setThinking] = useState(false)
+  const [response, setResponse] = useState(null)
   const fileRef = useRef(null);
 
   const UploadCard = () => {
@@ -240,6 +253,33 @@ export default function Home() {
     }
   };
 
+  const sendAIResponse = async () => {
+    if(prompt == ""){
+      toast.error("Please provide a question...")
+      return
+    }
+    const message = `I have a Medical Insurances Policy, name is ${selectedAIChatPolicy.policyName}, Benfits are ${selectedAIChatPolicy.benifits.map((benifit)=>{let temp = ''; temp += `${benifit}, `; return temp;})}. Cost of policy is Rs. ${selectedAIChatPolicy.premium} per month. Could you ${prompt}`
+    setThinking(true)
+    console.log(message)
+    setResponse("Model is thinking...")
+    if (!thinking) {        
+        const eventSource = new EventSource(`/api/askme/${message}`);
+
+        eventSource.onmessage = function (event) {
+            if (event.data){
+                setResponse((res) => res !== "Model is thinking..." ? res + event.data : event.data);
+            }
+        };            
+
+        eventSource.onerror = function () {
+            eventSource.close();
+            setThinking(false)
+            setResponse(res => res == null ? "Some error occured, Please later :(" : res === "Model is thinking..." || res === "Some error occured, Please later :(" || res.length < 1 ? "Some error occured, Please later :(" : res)
+        };
+    }
+
+  }
+
   useEffect(() => {
     if (uploading) {
       setTimeout(() => {
@@ -275,129 +315,256 @@ export default function Home() {
 
   return (
     <div className="h-full w-full p-2">
-      <Button onClick={() => fileRef.current.click()} className="w-full my-2">
-        Upload Existing Policy
-      </Button>
+      <Drawer direction="bottom">
+        <Button onClick={() => fileRef.current.click()} className="w-full my-2">
+          Upload Existing Policy
+        </Button>
 
-      <input
-        type="file"
-        accept="application/pdf"
-        ref={fileRef}
-        style={{ display: "none" }}
-        onChange={handleFileChange}
-      />
-      <UploadCard />
-      <Card className="my-2">
-        <CardHeader className="p-3">
-          <CardTitle>Results</CardTitle>
-        </CardHeader>
-        <CardContent className="p-2">
-          {results === null ||
-            (!showResult && (
-              <>
-                <Skeleton className="w-full h-32 mb-2" />
-                <Skeleton className="w-full h-32" />
-              </>
-            ))}
-          {results !== null && showResult && (
-            <div className="flex flex-col gap-2 w-full h-full">
-              {results.length > 0 &&
-                results.map((result, index) => {
-                  return (
-                    <button
-                      onClick={() => setSelectedPolicy(result)}
-                      key={index}
-                      className="w-full border-border focus:border-primary bg-background duration-500 border-2 h-32 rounded-md flex flex-col p-1 group relative"
-                    >
-                      <div
-                        hidden={index === 0 ? false : true}
-                        className="bg-primary absolute top-0 right-0 -translate-y-3 text-white px-1 rounded-md text-sm"
+        <input
+          type="file"
+          accept="application/pdf"
+          ref={fileRef}
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+        />
+        <UploadCard />
+        <Card className="my-2">
+          <CardHeader className="p-3">
+            <CardTitle>Results</CardTitle>
+          </CardHeader>
+          <CardContent className="p-2">
+            {results === null ||
+              (!showResult && (
+                <>
+                  <Skeleton className="w-full h-32 mb-2" />
+                  <Skeleton className="w-full h-32" />
+                </>
+              ))}
+            {results !== null && showResult && (
+              <div className="flex flex-col gap-2 w-full h-full">
+                {results.length > 0 &&
+                  results.map((result, index) => {
+                    return (
+                      <button
+                        onClick={() => setSelectedPolicy(result)}
+                        key={index}
+                        className="w-full border-border focus:border-primary bg-background duration-500 border-2 h-32 rounded-md flex flex-col p-1 group relative"
                       >
-                        Best Choice 🎉
-                      </div>
-                      <div className="h-1/2 w-full flex align-middle items-center">
-                        <img
-                          className="max-h-full grayscale group-focus:grayscale-0 duration-500"
-                          src={result.logo}
-                        />
-                        <div className="font-sofiapro font-bold text-green-700 text-center w-full">
-                          {uploadPolicyData && `Save ₹${uploadPolicyData.premium - result.premium}/Month`}
+                        <div
+                          hidden={index === 0 ? false : true}
+                          className="bg-primary absolute top-0 right-0 -translate-y-3 text-white px-1 rounded-md text-sm"
+                        >
+                          Best Choice 🎉
                         </div>
-                      </div>
-                      <Separator className="bg-primary" />
-                      <div className="w-full h-1/2 p-1 text-start font-sofiapro">
-                        <div className="h-1/2 flex justify-between">
-                          <div className="font-bold">{result.companyName}</div>
-                          <div>₹{result.premium}/Month</div>
+                        <div className="h-1/2 w-full flex align-middle items-center">
+                          <img
+                            className="max-h-full grayscale group-focus:grayscale-0 duration-500"
+                            src={result.logo}
+                          />
+                          <div className="font-sofiapro font-bold text-green-700 text-center w-full">
+                            {uploadPolicyData &&
+                              `Save ₹${
+                                uploadPolicyData.premium - result.premium
+                              }/Month`}
+                          </div>
                         </div>
-                        <div className="h-1/2 opacity-50 flex justify-between">
-                          <div>{result.policyName}</div>
-                          <AlertDialog>
-                            <AlertDialogTrigger className="border p-1 flex align-middle items-center rounded-md bg-primary text-background">
-                              View Details
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Policy Details
-                                </AlertDialogTitle>
-                                <AlertDialogDescription className="text-start">
-                                  {result.benifits.map((benifit, index) => {
-                                    return (
-                                      <div
-                                        key={index}
-                                        className="flex justify-between"
-                                      >
-                                        <div>·{benifit}</div>
-                                        <div>
-                                          <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            x="0px"
-                                            y="0px"
-                                            className="w-4 aspect-square"
-                                            viewBox="0 0 48 48"
-                                          >
-                                            <path
-                                              fill="#c8e6c9"
-                                              d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"
-                                            ></path>
-                                            <path
-                                              fill="#4caf50"
-                                              d="M34.586,14.586l-13.57,13.586l-5.602-5.586l-2.828,2.828l8.434,8.414l16.395-16.414L34.586,14.586z"
-                                            ></path>
-                                          </svg>
+                        <Separator className="bg-primary" />
+                        <div className="w-full h-1/2 p-1 text-start font-sofiapro">
+                          <div className="h-1/2 flex justify-between">
+                            <div className="font-bold">
+                              {result.companyName}
+                            </div>
+                            <div>₹{result.premium}/Month</div>
+                          </div>
+                          <div className="h-1/2 opacity-50 flex justify-between">
+                            <div>{result.policyName}</div>
+                            <AlertDialog>
+                              <AlertDialogTrigger className="border p-1 flex align-middle items-center rounded-md bg-primary text-background">
+                                View Details
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Policy Details
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription className="text-start">
+                                    {result.benifits.map((benifit, index) => {
+                                      return (
+                                        <div
+                                          key={index}
+                                          className="flex justify-between"
+                                        >
+                                          <div>·{benifit}</div>
+                                          <div>
+                                            <svg
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              x="0px"
+                                              y="0px"
+                                              className="w-4 aspect-square"
+                                              viewBox="0 0 48 48"
+                                            >
+                                              <path
+                                                fill="#c8e6c9"
+                                                d="M44,24c0,11.045-8.955,20-20,20S4,35.045,4,24S12.955,4,24,4S44,12.955,44,24z"
+                                              ></path>
+                                              <path
+                                                fill="#4caf50"
+                                                d="M34.586,14.586l-13.57,13.586l-5.602-5.586l-2.828,2.828l8.434,8.414l16.395-16.414L34.586,14.586z"
+                                              ></path>
+                                            </svg>
+                                          </div>
                                         </div>
-                                      </div>
-                                    );
-                                  })}
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Close</AlertDialogCancel>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                      );
+                                    })}
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex flex-row gap-2">
+                                  <DrawerTrigger
+                                    className="w-1/2 border rounded-lg flex  items-center justify-center"
+                                    onClick={(e) => {
+                                      setselectedAIChatPolicy(result);
+                                    }}
+                                  >
+                                    AI Assist&nbsp;
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      className="w-4 h-4"
+                                      viewBox="0 0 1080 1080"
+                                      fill="none"
+                                    >
+                                      <path
+                                        d="M515.09 725.824L472.006 824.503C455.444 862.434 402.954 862.434 386.393 824.503L343.308 725.824C304.966 638.006 235.953 568.104 149.868 529.892L31.2779 477.251C-6.42601 460.515 -6.42594 405.665 31.2779 388.929L146.164 337.932C234.463 298.737 304.714 226.244 342.401 135.431L386.044 30.2693C402.239 -8.75637 456.159 -8.75646 472.355 30.2692L515.998 135.432C553.685 226.244 623.935 298.737 712.234 337.932L827.121 388.929C864.825 405.665 864.825 460.515 827.121 477.251L708.53 529.892C622.446 568.104 553.433 638.006 515.09 725.824Z"
+                                        fill="url(#paint0_radial_2525_777)"
+                                      />
+                                      <path
+                                        d="M915.485 1036.98L903.367 1064.75C894.499 1085.08 866.349 1085.08 857.481 1064.75L845.364 1036.98C823.765 987.465 784.862 948.042 736.318 926.475L698.987 909.889C678.802 900.921 678.802 871.578 698.987 862.61L734.231 846.951C784.023 824.829 823.623 783.947 844.851 732.75L857.294 702.741C865.966 681.826 894.882 681.826 903.554 702.741L915.997 732.75C937.225 783.947 976.826 824.829 1026.62 846.951L1061.86 862.61C1082.05 871.578 1082.05 900.921 1061.86 909.889L1024.53 926.475C975.987 948.042 937.083 987.465 915.485 1036.98Z"
+                                        fill="url(#paint1_radial_2525_777)"
+                                      />
+                                      <defs>
+                                        <radialGradient
+                                          id="paint0_radial_2525_777"
+                                          cx="0"
+                                          cy="0"
+                                          r="1"
+                                          gradientUnits="userSpaceOnUse"
+                                          gradientTransform="translate(670.447 474.006) rotate(78.858) scale(665.5 665.824)"
+                                        >
+                                          <stop stop-color="#1BA1E3" />
+                                          <stop
+                                            offset="0.0001"
+                                            stop-color="#1BA1E3"
+                                          />
+                                          <stop
+                                            offset="0.300221"
+                                            stop-color="#5489D6"
+                                          />
+                                          <stop
+                                            offset="0.545524"
+                                            stop-color="#9B72CB"
+                                          />
+                                          <stop
+                                            offset="0.825372"
+                                            stop-color="#D96570"
+                                          />
+                                          <stop
+                                            offset="1"
+                                            stop-color="#F49C46"
+                                          />
+                                        </radialGradient>
+                                        <radialGradient
+                                          id="paint1_radial_2525_777"
+                                          cx="0"
+                                          cy="0"
+                                          r="1"
+                                          gradientUnits="userSpaceOnUse"
+                                          gradientTransform="translate(670.447 474.006) rotate(78.858) scale(665.5 665.824)"
+                                        >
+                                          <stop stop-color="#1BA1E3" />
+                                          <stop
+                                            offset="0.0001"
+                                            stop-color="#1BA1E3"
+                                          />
+                                          <stop
+                                            offset="0.300221"
+                                            stop-color="#5489D6"
+                                          />
+                                          <stop
+                                            offset="0.545524"
+                                            stop-color="#9B72CB"
+                                          />
+                                          <stop
+                                            offset="0.825372"
+                                            stop-color="#D96570"
+                                          />
+                                          <stop
+                                            offset="1"
+                                            stop-color="#F49C46"
+                                          />
+                                        </radialGradient>
+                                      </defs>
+                                    </svg>
+                                  </DrawerTrigger>
+                                  <AlertDialogCancel className="w-1/2 mt-0">
+                                    Close
+                                  </AlertDialogCancel>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              {results.length === 0 && (
-                <div className="text-center font-cubano text-primary">
-                  You are already on the best-known policy! 🎉
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      <Button
-        disabled={selectedPolicy === null ? true : false}
-        onClick={sendPdfs}
-        className="w-full my-2"
-      >
-        Send Pdfs
-      </Button>
+                      </button>
+                    );
+                  })}
+                {results.length === 0 && (
+                  <div className="text-center font-cubano text-primary">
+                    You are already on the best-known policy! 🎉
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Button
+          disabled={selectedPolicy === null ? true : false}
+          onClick={sendPdfs}
+          className="w-full my-2"
+        >
+          Send Pdfs
+        </Button>
+
+        {!!selectedAIChatPolicy && (
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle className="text-start text-base">
+                Ask details about {selectedAIChatPolicy.policyName} policy!
+              </DrawerTitle>
+              <div className="flex gap-2">
+                <textarea
+                  onChange={(e)=>setPrompt(e.target.value)}
+                  rows={2}
+                  className="border-2 rounded-lg p-1 w-full"
+                  placeholder="Tell me more about this policy benifits..."
+                />
+                <button disabled={thinking} onClick={sendAIResponse} className="bg-black text-white w-16 text-3xl rounded-xl">↑</button>
+              </div>
+              <div className="font-sofiapro text-start">Output</div>
+              <textarea
+                value={response}
+                rows="5"
+                disabled
+                className="rounded-lg p-1 border-green-300 border-2"
+              ></textarea>
+            </DrawerHeader>
+            <DrawerFooter>
+              <DrawerClose onClick={()=>{setResponse("");setPrompt("")}}>
+                <Button variant="outline" className="w-full">
+                  Cancel
+                </Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </DrawerContent>
+        )}
+      </Drawer>
     </div>
   );
 }

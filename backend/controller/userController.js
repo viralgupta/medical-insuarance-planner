@@ -420,13 +420,13 @@ const compareinsurance = asyncHandler(async (req, res) => {
 
     let coveredBenifits = [];
     Benifts.forEach((benifit) => {
-        if (filetext.includes(benifit)) {
+        if (filetext.includes(benifit) || filetext.includes(benifit.slice(0,-1))) {
             coveredBenifits.push(benifit)
         }
     })
 
     let comparedInsurance = await Insurance.find({
-        "benifits": { $in: coveredBenifits }
+        "benifits": { $in: coveredBenifits[coveredBenifits.length - 1] }
     })
 
     comparedInsurance = comparedInsurance.filter(insurance => insurance.premium < price)
