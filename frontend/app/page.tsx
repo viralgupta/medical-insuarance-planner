@@ -297,21 +297,21 @@ export default function Home() {
     }
   }, [uploading]);
 
-  useEffect(() => {
-    let user = JSON.parse(localStorage.getItem("user"));
-    let token = localStorage.getItem("token");
-    if (!user || !token) {
-      window.location = "/login";
-    }
-    if (user.hasUserId) {
-      if (!user.aadharVerified) {
-        window.location = "/aadhar";
-      }
-    } else {
-      window.location = "/registerface";
-    }
-    //eslint-disable-next-line
-  }, []);
+  // useEffect(() => {
+  //   let user = JSON.parse(localStorage.getItem("user"));
+  //   let token = localStorage.getItem("token");
+  //   if (!user || !token) {
+  //     window.location = "/login";
+  //   }
+  //   if (user.hasUserId) {
+  //     if (!user.aadharVerified) {
+  //       window.location = "/aadhar";
+  //     }
+  //   } else {
+  //     window.location = "/registerface";
+  //   }
+  //   //eslint-disable-next-line
+  // }, []);
 
   return (
     <div className="h-full w-full p-2">
